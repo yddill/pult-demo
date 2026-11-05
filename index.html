@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Агент продаж подключается к личному Telegram, переписывается от вашего имени и доводит человека до оплаты. Демо одного разговора.">
+<meta property="og:title" content="Агент продаж в вашем Telegram">
+<meta property="og:description" content="Демо: один разговор от первого сообщения до оплаты.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#ECEFEA">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232346E0'/%3E%3Cpath d='M8 10h16v9H14l-5 4v-4H8z' fill='%23fff'/%3E%3C/svg%3E">
+<title>Демо агента «Пульт»</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=Unbounded:wght@500;600&display=swap">
+<style>
+/* Layout: control desk — a phone that plays the real conversation on the left, the "behind the scenes" panel on the right, a numbered route of steps on top. */
+:root {
+  --bg: #ECEFEA;          /* grey-green desk */
+  --surface: #FFFFFF;
+  --ink: #18221E;
+  --muted: #5C6963;
+  --line: #D3D9D4;
+  --accent: #2346E0;      /* signal blue: agent, active step */
+  --accent-soft: #DDE4FF;
+  --ok: #17885A;
+  --ok-soft: #D8F0E4;
+  --warn: #A86A00;
+  --warn-soft: #F6E8C8;
+  --stop: #B23A3A;
+  --stop-soft: #F5DADA;
+  --device: #1E2824;
+  --chat-bg: #DCE5DF;
+  --bubble-in: #FFFFFF;
+  --bubble-out: #E3EAFF;
+  --display: "Unbounded", "Golos Text", system-ui, sans-serif;
+  --body: "Golos Text", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121815; --surface: #1B2420; --ink: #E6ECE8; --muted: #9AA8A1; --line: #2C3833;
+    --accent: #7D95FF; --accent-soft: #232F5C; --ok: #4FC48E; --ok-soft: #173A2A;
+    --warn: #E0AA47; --warn-soft: #3A2D12; --stop: #F08A8A; --stop-soft: #3E1E1E;
+    --device: #050807; --chat-bg: #16201C; --bubble-in: #24302B; --bubble-out: #26315E;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121815; --surface: #1B2420; --ink: #E6ECE8; --muted: #9AA8A1; --line: #2C3833;
+  --accent: #7D95FF; --accent-soft: #232F5C; --ok: #4FC48E; --ok-soft: #173A2A;
+  --warn: #E0AA47; --warn-soft: #3A2D12; --stop: #F08A8A; --stop-soft: #3E1E1E;
+  --device: #050807; --chat-bg: #16201C; --bubble-in: #24302B; --bubble-out: #26315E;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.5; }
+.wrap {
+  max-width: 1120px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 40px;
+  display: flex; flex-direction: column; gap: 24px;
+}
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+.brand { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+h1 { font-family: var(--display); font-weight: 600; font-size: clamp(26px, 4vw, 38px); line-height: 1.1; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.lead { margin: 0; color: var(--muted); max-width: 60ch; }
+.note { font-size: 13px; color: var(--muted); }
+
+/* route of steps */
+.route { overflow-x: auto; scrollbar-width: thin; }
+.route ol { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; min-width: max-content; }
+.route button {
+  font: inherit; font-size: 14px; color: var(--muted); background: transparent;
+  border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px 6px 6px; cursor: pointer;
+  display: flex; align-items: center; gap: 8px; white-space: nowrap;
+}
+.route button .n {
+  width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 12px; font-weight: 600; background: var(--line); color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.route button[aria-current="step"] { color: var(--ink); border-color: var(--accent); background: var(--surface); }
+.route button[aria-current="step"] .n { background: var(--accent); color: var(--surface); }
+.route button.done .n { background: var(--ok-soft); color: var(--ok); }
+.route button:focus-visible, .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.stage { display: grid; grid-template-columns: minmax(280px, 380px) minmax(0, 1fr); gap: 32px; align-items: start; }
+@media (max-width: 820px) { .stage { grid-template-columns: minmax(0, 1fr); } .phone { margin: 0 auto; } }
+
+/* phone */
+.phone {
+  width: 100%; max-width: 380px; height: 640px; border: 10px solid var(--device); border-radius: 38px;
+  background: var(--chat-bg); display: flex; flex-direction: column; overflow: hidden;
+}
+.bar { background: var(--surface); padding: 12px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--line); }
+.ava { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-weight: 600; color: #fff; background: #C2577E; flex: none; }
+.ava.sys { background: var(--accent); }
+.who { min-width: 0; }
+.who b { display: block; font-weight: 600; font-size: 15px; line-height: 1.2; }
+.who span { font-size: 13px; color: var(--muted); }
+.chat { flex: 1; overflow-y: auto; padding: 16px 12px; display: flex; flex-direction: column; gap: 8px; scroll-behavior: smooth; }
+.msg { max-width: 84%; padding: 8px 12px 6px; border-radius: 16px; font-size: 15px; line-height: 1.42; white-space: pre-line; overflow-wrap: anywhere; }
+.msg.in { align-self: flex-start; background: var(--bubble-in); border-bottom-left-radius: 4px; }
+.msg.out { align-self: flex-end; background: var(--bubble-out); border-bottom-right-radius: 4px; }
+.msg .meta { display: block; text-align: right; font-size: 11px; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.msg a { color: var(--accent); }
+.day { align-self: center; font-size: 12px; color: var(--muted); background: var(--surface); padding: 2px 10px; border-radius: 999px; }
+.typing { align-self: flex-end; background: var(--bubble-out); border-radius: 16px; padding: 10px 14px; display: flex; gap: 4px; }
+.typing.in { align-self: flex-start; background: var(--bubble-in); }
+.typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: blink 1.2s infinite; }
+.typing i:nth-child(2) { animation-delay: .2s; } .typing i:nth-child(3) { animation-delay: .4s; }
+@keyframes blink { 0%, 60%, 100% { opacity: .25; } 30% { opacity: 1; } }
+.appear { animation: rise .28s ease-out; }
+@keyframes rise { from { transform: translateY(6px); opacity: .4; } to { transform: none; opacity: 1; } }
+.compose { background: var(--surface); border-top: 1px solid var(--line); padding: 10px 14px; font-size: 14px; color: var(--muted); }
+
+/* connect screen inside the phone */
+.connect { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; text-align: center; background: var(--surface); }
+.qr { position: relative; width: 200px; height: 200px; border-radius: 16px; background: #fff; padding: 12px; }
+.qr canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+.qr .ok { position: absolute; inset: 0; border-radius: 16px; background: var(--ok); color: #fff; display: grid; place-items: center; font-weight: 600; font-size: 15px; opacity: 0; transition: opacity .4s; }
+.qr.linked .ok { opacity: 1; }
+.connect p { margin: 0; color: var(--muted); font-size: 14px; max-width: 26ch; }
+.connect b { font-size: 16px; }
+
+/* panel */
+.panel { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.step-no { font-size: 14px; color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+.panel h2 { font-family: var(--display); font-weight: 500; font-size: clamp(22px, 3vw, 30px); line-height: 1.15; margin: 4px 0 0; text-wrap: balance; }
+.panel .say { margin: 0; font-size: 18px; max-width: 58ch; }
+.behind { border-left: 3px solid var(--accent); padding: 4px 0 4px 16px; display: flex; flex-direction: column; gap: 10px; }
+.behind h3 { margin: 0; font-size: 14px; font-weight: 600; color: var(--muted); }
+.behind ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.behind li { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; max-width: 62ch; }
+.behind li::before { content: ""; width: 10px; height: 10px; margin-top: 7px; border-radius: 3px; background: var(--accent); }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.btn { font: inherit; font-size: 15px; font-weight: 600; border-radius: 12px; padding: 11px 18px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.btn[disabled] { opacity: .45; cursor: default; }
+.hint { font-size: 13px; color: var(--muted); }
+
+/* cabinet */
+.cab { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+.cab-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.cab-top b { font-family: var(--display); font-weight: 500; font-size: 16px; }
+.mode { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 13px; }
+.mode span { padding: 6px 10px; color: var(--muted); }
+.mode span.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.rows { list-style: none; margin: 0; padding: 0; }
+.rows li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 12px 18px; border-bottom: 1px solid var(--line); align-items: center; }
+.rows li:last-child { border-bottom: 0; }
+.rows .nm { font-weight: 600; }
+.rows .tx { grid-column: 1; font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
+.pill { grid-row: 1 / span 2; grid-column: 2; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.go { background: var(--accent-soft); color: var(--accent); }
+.pill.you { background: var(--warn-soft); color: var(--warn); }
+.pill.stop { background: var(--stop-soft); color: var(--stop); }
+@media (max-width: 480px) { .pill { grid-row: auto; grid-column: 1; justify-self: start; } }
+
+footer { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .appear, .typing i { animation: none; }
+  .chat { scroll-behavior: auto; }
+  .qr .ok { transition: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1>Агент продаж в вашем Telegram</h1>
+      <p class="lead">Подключается к личному аккаунту, переписывается от вашего имени и доводит человека до оплаты. Ниже — один разговор от начала до конца.</p>
+    </div>
+    <span class="note">Демо: имена, переписка и продукт вымышлены</span>
+  </header>
+
+  <nav class="route" aria-label="Шаги демо"><ol id="route"></ol></nav>
+
+  <section class="stage">
+    <div class="phone" aria-label="Экран телефона">
+      <div class="bar">
+        <div class="ava" id="ava">К</div>
+        <div class="who"><b id="who-name">Катя Смирнова</b><span id="who-status">была недавно</span></div>
+      </div>
+      <div class="connect" id="connect" hidden>
+        <b>Подключение аккаунта</b>
+        <div class="qr" id="qr"><canvas id="qr-canvas" width="29" height="29" aria-hidden="true"></canvas><div class="ok">Аккаунт подключён</div></div>
+        <p id="connect-text">Telegram → Настройки → Устройства → Подключить устройство</p>
+      </div>
+      <div class="chat" id="chat" aria-live="polite"></div>
+      <div class="compose" id="compose">Сообщение</div>
+    </div>
+
+    <div class="panel">
+      <div>
+        <div class="step-no" id="step-no"></div>
+        <h2 id="step-title"></h2>
+      </div>
+      <p class="say" id="step-say"></p>
+      <div id="cabinet" hidden></div>
+      <div class="behind" id="behind">
+        <h3>За кадром</h3>
+        <ul id="behind-list"></ul>
+      </div>
+      <div class="controls">
+        <button class="btn primary" id="next" type="button">Дальше</button>
+        <button class="btn" id="restart" type="button">Сначала</button>
+        <span class="hint">или клавиша →</span>
+      </div>
+    </div>
+  </section>
+
+  <footer>Агент пишет только по описанию вашего продукта: цены, ссылки и условия берёт оттуда и ничего не выдумывает. Каждый ответ перед отправкой проверяет вторая модель.</footer>
+</div>
+
+<script>
+(() => {
+  const OWNER = "Алина Котова";
+  const STEPS = [
+    {
+      name: "Подключение",
+      title: "Подключение за минуту",
+      say: "Владелец сканирует QR-код в своём Telegram — и агент работает с его личного аккаунта. Без паролей, ботов и сторонних сервисов.",
+      behind: [
+        "Вход по QR, как на компьютере: Настройки → Устройства → Подключить устройство.",
+        "Люди видят сообщения от владельца, а не от бота.",
+        "Агент изучает прошлые переписки: тон, обращение на «ты» или «вы», любимые смайлы."
+      ],
+      connect: true
+    },
+    {
+      name: "Первое сообщение",
+      title: "Пишет тем, кто уже общался с вами",
+      say: "Агент находит людей, которые раньше писали владельцу, и пишет каждому лично — с учётом прошлой переписки.",
+      behind: [
+        "Не рассылка: каждое сообщение своё, по одному человеку, с паузами.",
+        "Пишет в рабочие часы и соблюдает дневной лимит, чтобы аккаунт не попал под ограничения Telegram.",
+        "Кто попросил не писать — сразу в стоп-лист."
+      ],
+      play: [
+        { day: "Сегодня" },
+        { who: "out", text: "Катя, привет) Весной ты спрашивала у меня про продвижение. Как сейчас с записью — свободные окна есть?", t: "11:02" },
+        { who: "in", text: "Привет! Окна есть, особенно по будням 😅", t: "11:40" }
+      ]
+    },
+    {
+      name: "Интерес",
+      title: "Продаёт результат, а не «120 уроков»",
+      say: "Катя назвала свою задачу — свободные окна. Агент отвечает под её нишу и сразу предлагает следующий шаг.",
+      behind: [
+        "Понял намерение: интерес, задача — заполнить запись.",
+        "Подобрал из описания продукта то, что ведёт к её результату: Авито, Pinterest, разборы по пятницам.",
+        "Проверка перед отправкой: факты только из описания, тон и род как у владельца, длина по ситуации."
+      ],
+      play: [
+        { who: "out", text: "Как тебе идея закрыть будние окна за пару недель? Мастерам маникюра хорошо заходят Авито и Pinterest — там работы сами приводят клиенток.\n\nВ «Точке роста» как раз разбираем, как оформить эти площадки и что публиковать, чтобы записывались. А по пятницам созвоны, где можно разобрать твой профиль.\n\nСкинуть ссылку на вступление?)", t: "11:43" },
+        { who: "in", text: "А сколько стоит? Я уже покупала курсы, толку ноль", t: "11:51" }
+      ]
+    },
+    {
+      name: "«Дорого»",
+      title: "Отрабатывает сомнение без давления",
+      say: "Самый частый момент, где продажа обрывается. Агент признаёт опасение, считает окупаемость под её дело и задаёт один вопрос.",
+      behind: [
+        "Возражения «дорого», «подумаю», «нет времени», «посоветуюсь с мужем» — по приёмам сильных продажников.",
+        "Без выдуманных кейсов, дедлайнов и «цена завтра вырастет».",
+        "Если человек отказался — не уговаривает и больше не пишет."
+      ],
+      play: [
+        { who: "out", text: "Понимаю, после курсов без результата осторожничаешь)\n\nУчастие — 990 ₽ в месяц, это меньше одного твоего маникюра. Одна новая клиентка с Авито уже окупает месяц. И это не курс, где остаёшься одна: вопросы можно задавать мне.\n\nЧто тебе важно увидеть, чтобы понять, что это твоё?)", t: "11:54" },
+        { who: "in", text: "Ладно, давай попробую месяц", t: "12:06" }
+      ]
+    },
+    {
+      name: "Ссылка",
+      title: "«Да» — и сразу ссылка",
+      say: "Как только человек согласился, агент присылает ссылку на оплату. Пока владелец занят, сделка не остывает.",
+      behind: [
+        "Ссылку берёт только из описания продукта, свою не придумает.",
+        "Нет ссылки в описании — передаёт разговор владельцу.",
+        "Отвечает с живыми паузами и статусом «печатает…»."
+      ],
+      play: [
+        { who: "out", text: "Супер) Вот ссылка на вступление: tochka-rosta.example/join\n\nПосле оплаты сразу откроется доступ. Начни с урока про Авито — первые заявки могут прийти уже на этой неделе)", t: "12:07", link: "tochka-rosta.example/join" },
+        { who: "in", text: "Оплатила 🙌", t: "12:19" },
+        { who: "out", text: "Ура, добро пожаловать в клуб) Если что-то не получится — пиши", t: "12:20" }
+      ]
+    },
+    {
+      name: "Кабинет",
+      title: "Владелец видит всё в кабинете",
+      say: "Каждый разговор — с понятным статусом. Сложное агент передаёт вам, а вы решаете: отвечает он сам или каждый ответ ждёт вашего «да».",
+      behind: [
+        "Спросили «это бот?», просят созвон, пишут жалобу — чат сразу переходит к владельцу.",
+        "Владелец написал в чат сам — агент из этого чата выходит.",
+        "Агента можно поставить на паузу одной кнопкой."
+      ],
+      cabinet: true
+    }
+  ];
+
+  const CABINET = `
+    <div class="cab">
+      <div class="cab-top"><b>Разговоры сегодня</b>
+        <div class="mode" role="group" aria-label="Режим ответов"><span class="on">Агент отвечает сам</span><span>Ответы на одобрение</span></div>
+      </div>
+      <ul class="rows">
+        <li><span class="nm">Катя Смирнова</span><span class="pill ok">Согласилась</span><span class="tx">Ссылка отправлена, написала «Оплатила»</span></li>
+        <li><span class="nm">Марина Левина</span><span class="pill go">Агент ведёт</span><span class="tx">Спросила, есть ли записи уроков</span></li>
+        <li><span class="nm">Ольга Ким</span><span class="pill you">Передан вам</span><span class="tx">Просит созвон</span></li>
+        <li><span class="nm">Света Орлова</span><span class="pill you">Ждёт вашего «да»</span><span class="tx">Черновик ответа на «подумаю»</span></li>
+        <li><span class="nm">Ирина Павлова</span><span class="pill stop">Отказ</span><span class="tx">«Нет, спасибо» — больше не пишем</span></li>
+      </ul>
+    </div>`;
+
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const $ = (id) => document.getElementById(id);
+  const chat = $("chat");
+  let cur = -1, token = 0, playing = false;
+
+  // route
+  STEPS.forEach((s, i) => {
+    const li = document.createElement("li");
+    const b = document.createElement("button");
+    b.type = "button";
+    b.innerHTML = `<span class="n">${i + 1}</span>${s.name}`;
+    b.addEventListener("click", () => go(i, true));
+    li.appendChild(b);
+    $("route").appendChild(li);
+  });
+
+  // decorative QR-like pattern
+  function drawQR() {
+    const c = $("qr-canvas"), x = c.getContext("2d"), n = 29;
+    let seed = 7;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    x.fillStyle = "#fff"; x.fillRect(0, 0, n, n);
+    x.fillStyle = "#18221E";
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) if (rnd() > 0.52) x.fillRect(i, j, 1, 1);
+    const finder = (a, b) => {
+      x.fillStyle = "#fff"; x.fillRect(a - 1, b - 1, 9, 9);
+      x.fillStyle = "#18221E"; x.fillRect(a, b, 7, 7);
+      x.fillStyle = "#fff"; x.fillRect(a + 1, b + 1, 5, 5);
+      x.fillStyle = "#18221E"; x.fillRect(a + 2, b + 2, 3, 3);
+    };
+    finder(0, 0); finder(n - 7, 0); finder(0, n - 7);
+  }
+  drawQR();
+
+  const wait = (ms) => new Promise((r) => setTimeout(r, reduce ? 0 : ms));
+  const scroll = () => { chat.scrollTop = chat.scrollHeight; };
+
+  function bubble(m) {
+    if (m.day) {
+      const d = document.createElement("div");
+      d.className = "day"; d.textContent = m.day; chat.appendChild(d); return;
+    }
+    const el = document.createElement("div");
+    el.className = `msg ${m.who}` + (reduce ? "" : " appear");
+    if (m.link) {
+      const [a, b] = m.text.split(m.link);
+      el.append(a);
+      const l = document.createElement("a"); l.textContent = m.link; l.href = "#"; l.addEventListener("click", (e) => e.preventDefault());
+      el.append(l, b);
+    } else {
+      el.textContent = m.text;
+    }
+    const meta = document.createElement("span");
+    meta.className = "meta"; meta.textContent = m.who === "out" ? `${m.t} ✓✓` : m.t;
+    el.appendChild(meta);
+    chat.appendChild(el);
+    scroll();
+  }
+
+  async function playStep(i, my) {
+    const s = STEPS[i];
+    if (!s.play) return;
+    playing = true; setNext();
+    for (const m of s.play) {
+      if (my !== token) return;
+      if (m.day) { bubble(m); continue; }
+      await wait(500);
+      if (my !== token) return;
+      const t = document.createElement("div");
+      t.className = "typing" + (m.who === "in" ? " in" : "");
+      t.innerHTML = "<i></i><i></i><i></i>";
+      chat.appendChild(t); scroll();
+      $("who-status").textContent = m.who === "in" ? "печатает…" : "в сети";
+      await wait(Math.min(2600, 700 + m.text.length * 9));
+      t.remove();
+      if (my !== token) return;
+      bubble(m);
+      $("who-status").textContent = "в сети";
+    }
+    playing = false; setNext();
+  }
+
+  async function connect(my) {
+    const qr = $("qr");
+    qr.classList.remove("linked");
+    $("connect-text").textContent = "Telegram → Настройки → Устройства → Подключить устройство";
+    await wait(1800);
+    if (my !== token) return;
+    qr.classList.add("linked");
+    $("connect-text").textContent = `${OWNER} · личный аккаунт. Агент изучает прошлые переписки.`;
+  }
+
+  function renderStatic(upto) {
+    // chat history of all previous steps, without animation
+    chat.innerHTML = "";
+    for (let k = 0; k < upto; k++) (STEPS[k].play || []).forEach(bubble);
+  }
+
+  function setNext() {
+    const last = cur === STEPS.length - 1;
+    $("next").textContent = last ? "Показать снова" : "Дальше";
+    $("next").disabled = false;
+  }
+
+  function go(i, jump) {
+    const my = ++token;
+    playing = false;
+    cur = i;
+    const s = STEPS[i];
+    document.querySelectorAll("#route button").forEach((b, k) => {
+      b.toggleAttribute("aria-current", k === i);
+      if (k === i) b.setAttribute("aria-current", "step");
+      b.classList.toggle("done", k < i);
+    });
+    $("step-no").textContent = `Шаг ${i + 1} из ${STEPS.length}`;
+    $("step-title").textContent = s.title;
+    $("step-say").textContent = s.say;
+    $("behind-list").innerHTML = "";
+    s.behind.forEach((t) => { const li = document.createElement("li"); li.textContent = t; $("behind-list").appendChild(li); });
+
+    const isConnect = !!s.connect;
+    $("connect").hidden = !isConnect;
+    chat.hidden = isConnect;
+    $("compose").hidden = isConnect;
+    $("ava").textContent = isConnect ? "П" : "К";
+    $("ava").classList.toggle("sys", isConnect);
+    $("who-name").textContent = isConnect ? "Пульт" : "Катя Смирнова";
+    $("who-status").textContent = isConnect ? "подключение" : "была недавно";
+
+    $("cabinet").hidden = !s.cabinet;
+    if (s.cabinet) $("cabinet").innerHTML = CABINET;
+
+    if (isConnect) { connect(my); setNext(); return; }
+    renderStatic(i);
+    if (s.cabinet) { renderStatic(i); setNext(); return; }
+    playStep(i, my);
+  }
+
+  function next() {
+    if (playing) {
+      // finish the current step instantly
+      token++; playing = false;
+      renderStatic(cur + 1); setNext();
+      return;
+    }
+    go(cur === STEPS.length - 1 ? 0 : cur + 1);
+  }
+
+  $("next").addEventListener("click", next);
+  $("restart").addEventListener("click", () => go(0));
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest && e.target.closest("button") && (e.key === " " || e.key === "Enter")) return;
+    if (e.key === "ArrowRight") { e.preventDefault(); next(); }
+    if (e.key === "ArrowLeft" && cur > 0) { e.preventDefault(); go(cur - 1); }
+  });
+
+  go(0);
+})();
+</script>
+</body>
+</html>
